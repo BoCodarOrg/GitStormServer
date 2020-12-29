@@ -1,15 +1,19 @@
 import React from 'react';
-
-import { Container } from './style'
-
 interface Props {
-    name: string
+    data: [string]
 }
 
 const Folder: React.FC<Props> = (props) => {
     return (
-        <div>
-            {props.name}
+        <div className="container">
+            <ul>
+                {
+                    props.data.map(item => (
+                        <a href={`/${item.replace('*', '').trim()}`}><li>{item}</li></a>
+                    )
+                )
+                }
+            </ul>
         </div>
     )
 }
