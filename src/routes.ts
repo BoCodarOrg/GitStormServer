@@ -2,18 +2,37 @@ import express, { NextFunction, Request, Response } from 'express';
 
 import { exec } from 'child_process';
 import parseToObject from './util/parseToObject';
+import enviroments from './config/enviroments';
+import { stderr, stdout } from 'process';
 
 const router = express.Router();
 
+
 router.get('/', (req: Request, res: Response, next: NextFunction) => {
-    exec('git branch', (error, stdout, stderr) => {
-        return res.render('home', { data: stdout.toString().trim().split('\n') });
+
+    exec(`ls -F ${enviroments.dirFiles} | grep \/$`, (error, stdout, stderr) => {
+        if (error) {
+            console.log(error.stack);
+            console.log('Error code: ' + error.code);
+            console.log('Signal received: ' + error.signal);
+        }
+
+        console.log('Child Process STDOUT: ' + stdout);
+        console.error('Child Process STDERR: ' + stderr);
+
+        return res.render('repositories', { data: stdout.toString().trim().split('\n') });
+    });
+})
+
+router.get('/:repository', (req: Request, res: Response, next: NextFunction) => {
+    exec(`cd ${enviroments.dirFiles}/${req.params.repository} && git branch`, (error, stdout, stderr) => {
+        return res.render('branches', { data: stdout.toString().trim().split('\n'), repo: req.params.repository });
     })
 })
 
 
-router.get('/branch/:branch', (req: Request, res: Response, next: NextFunction) => {
-    const cmd = `git log ${req.params.branch} --pretty=format:'{"commit":"%h","date":"%ad","message":"%s","author":"%an", "email":"%ce"}' --date=short`;
+router.get('/:repository/:branch/commits', (req: Request, res: Response, next: NextFunction) => {
+    const cmd = `cd ${enviroments.dirFiles}/${req.params.repository} && git log ${req.params.branch} --pretty=format:'{"commit":"%h","date":"%ad","message":"%s","author":"%an", "email":"%ce"}' --date=short`;
     exec(cmd, (error, stdout, stderr) => {
         if (!error) {
             const result = parseToObject(`${stdout}`);
@@ -26,13 +45,11 @@ router.get('/branch/:branch', (req: Request, res: Response, next: NextFunction) 
     });
 });
 
-router.get('/pull-request/:branch', (req: Request, res: Response, next: NextFunction) => {
-    const cmd = 'git branch';
+router.get('/:repository/pull-request/:branch', (req: Request, res: Response, next: NextFunction) => {
+    const cmd = `cd ${enviroments.dirFiles}/${req.params.repository} && git branch`;
     exec(cmd, (error, stdout, stderr) => {
-        return res.render('pullRequest', {
-            branch: req.params.branch, branches: stdout.toString().trim().split('\n')
-        });
-    })
-})
+        return res.render('pullRequest', { branch: req.params.branch, branches: stdout.toString().trim().split('\n')})
+    });
+});
 
 export default router;
