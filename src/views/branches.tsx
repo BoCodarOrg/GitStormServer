@@ -23,7 +23,7 @@ const Branches: React.FC<Props> = ({ data,repo }) => {
                                     <a href={`/${repo}/${item.replace('*', "").trim()}/commits`}><button>View commits</button></a>
                                 </th>
                                 <th>
-                                    <a href={`/pull-request/${item.replace('*', "").trim()}`}><button>create pull requests</button></a>
+                                    <a href={`/${repo}/pull-request/${item.replace('*', "").trim()}`}><button>create pull requests</button></a>
                                 </th>
                             </tr>
 

@@ -7,6 +7,7 @@ import { stderr, stdout } from 'process';
 
 const router = express.Router();
 
+
 router.get('/', (req: Request, res: Response, next: NextFunction) => {
 
     exec(`find ${enviroments.dirFiles} -name ".git"`, (error, stdout, stderr) => {
@@ -48,6 +49,13 @@ router.get('/:repository/:branch/commits', (req: Request, res: Response, next: N
             return res.send(`error::${error}`)
         }
 
+    });
+});
+
+router.get('/:repository/pull-request/:branch', (req: Request, res: Response, next: NextFunction) => {
+    const cmd = `cd ${enviroments.dirFiles}/${req.params.repository} && git branch`;
+    exec(cmd, (error, stdout, stderr) => {
+        return res.render('pullRequest', { branch: req.params.branch, branches: stdout.toString().trim().split('\n')})
     });
 });
 
