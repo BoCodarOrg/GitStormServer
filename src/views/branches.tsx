@@ -1,10 +1,11 @@
 import React from 'react';
 
 interface Props {
-    data: [string]
+    data: [string],
+    repo: string
 }
 
-const Home: React.FC<Props> = ({ data }) => {
+const Branches: React.FC<Props> = ({ data,repo }) => {
     return (
         <div>
             <table border="1">
@@ -19,7 +20,7 @@ const Home: React.FC<Props> = ({ data }) => {
                             <tr>
                                 <th>{item}</th>
                                 <th>
-                                    <a href={`/branch/${item.replace('*', "").trim()}`}><button>View commits</button></a>
+                                    <a href={`/${repo}/${item.replace('*', "").trim()}/commits`}><button>View commits</button></a>
                                 </th>
                                 <th>
                                     <a href={`/pull-request/${item.replace('*', "").trim()}`}><button>create pull requests</button></a>
@@ -34,4 +35,4 @@ const Home: React.FC<Props> = ({ data }) => {
     )
 }
 
-export default Home;
+export default Branches;
