@@ -11,8 +11,8 @@ const server = http.Server(app);
 
 
 app.set('views', __dirname + '/views');
-app.set('view engine', 'js');
-app.engine('js', createEngine());
+app.set('view engine', 'tsx');
+app.engine('tsx', createEngine());
 app.use(routes);
 
 server.listen(3000, () => {
