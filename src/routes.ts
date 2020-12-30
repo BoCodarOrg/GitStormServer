@@ -8,24 +8,31 @@ import { stderr, stdout } from 'process';
 const router = express.Router();
 
 router.get('/', (req: Request, res: Response, next: NextFunction) => {
-    
-   exec(`ls -F ${enviroments.dirFiles} | grep \/$`,(error, stdout, stderr) => {
+
+    exec(`find ${enviroments.dirFiles} -name ".git"`, (error, stdout, stderr) => {
         if (error) {
-          console.log(error.stack);
-          console.log('Error code: '+error.code);
-          console.log('Signal received: '+error.signal);
+            console.log(error.stack);
+            console.log('Error code: ' + error.code);
+            console.log('Signal received: ' + error.signal);
         }
 
-        console.log('Child Process STDOUT: '+stdout);
-        console.error('Child Process STDERR: '+stderr);
+        console.log('Child Process STDOUT: ' + stdout);
+        console.error('Child Process STDERR: ' + stderr);
 
-        return res.render('repositories', { data: stdout.toString().trim().split('\n') });        
-      });
+        return res.render('repositories', {
+            data: stdout.toString()
+                .trim()
+                .split('\n')
+                .map(item =>
+                    item.replace(`${enviroments.dirFiles}`, '')
+                        .replace('/.git', ''))
+        });
+    });
 })
 
 router.get('/:repository', (req: Request, res: Response, next: NextFunction) => {
     exec(`cd ${enviroments.dirFiles}/${req.params.repository} && git branch`, (error, stdout, stderr) => {
-        return res.render('branches', { data: stdout.toString().trim().split('\n'),repo: req.params.repository });
+        return res.render('branches', { data: stdout.toString().trim().split('\n'), repo: req.params.repository });
     })
 })
 
@@ -41,7 +48,7 @@ router.get('/:repository/:branch/commits', (req: Request, res: Response, next: N
             return res.send(`error::${error}`)
         }
 
-    });    
+    });
 });
 
 export default router;
