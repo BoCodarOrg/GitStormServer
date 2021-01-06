@@ -57,14 +57,33 @@ router.get('/:repository/:branch/commits', (req: Request, res: Response, next: N
 //Pull requests
 router.post('/diff/:repository/:id', (req: Request, res: Response, next: NextFunction) => {
     const { origin, destination } = req.body;
-    const cmd = `cd ${enviroments.dirFiles}/${req.params.repository} && git diff ${origin.trim().replace('*','')} ${destination.trim().replace('*','')}`
+    const cmd = `cd ${enviroments.dirFiles}/${req.params.repository} && git diff  ${destination.trim().replace('*', '')}  ${origin.trim().replace('*', '')}`
     exec(cmd, (error, stdout, stderr) => {
         if (!error) {
-            return res.json({ data: stdout.toString().trim().split('\n') })
+            return res.json({ data: stdout.toString().trim().split('diff --git') })
         } else {
             return res.json({ data: stderr })
         }
     })
 });
 
+
+router.post('/:repository/merge', (req: Request, res: Response, next: NextFunction) => {
+    const { origin, destination } = req.body;
+    console.log({
+        origin,
+        destination,
+        repo: req.params.repository
+    })
+
+    const cmd = `cd ${enviroments.dirFiles}/${req.params.repository} && git checkout ${destination} && git merge ${origin}`;
+    exec(cmd, (error, stdout, stderr) => {
+        if (!error) {
+            return res.json({ data: "Merge success"})
+        } else {
+            
+            return res.json({ data: stderr })
+        }
+    })
+});
 export default router;
