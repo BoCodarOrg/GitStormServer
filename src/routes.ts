@@ -1,89 +1,23 @@
-import express, { NextFunction, Request, Response } from 'express';
+import express from 'express';
 
-import { exec } from 'child_process';
-import parseToObject from './util/parseToObject';
-import enviroments from './config/enviroments';
-import { stderr, stdout } from 'process';
+import repositoriesController from './controllers/Repositories';
+import branchController from './controllers/Branch';
+import commitsController from './controllers/Commits';
+import pullRequestController from './controllers/PullRequest';
+
+import { changeDirectoryCmd } from './util/changeDirectory'
 
 const router = express.Router();
 
 //Take Repositories
-router.get('/', (req: Request, res: Response, next: NextFunction) => {
-
-    exec(`find ${enviroments.dirFiles} -name ".git"`, (error, stdout, stderr) => {
-        if (error) {
-            console.log(error.stack);
-            console.log('Error code: ' + error.code);
-            console.log('Signal received: ' + error.signal);
-        }
-
-        return res.json({
-            name: 'repositories',
-            data: stdout.toString()
-                .trim()
-                .split('\n')
-                .map(item => ({
-                    name:
-                        item.replace(`${enviroments.dirFiles}`, '')
-                            .replace('/.git', '')
-                }))
-        });
-    });
-})
-
+router.get('/', [repositoriesController.index]);
 //Take Branchs
-router.get('/:repository', (req: Request, res: Response, next: NextFunction) => {
-    exec(`cd ${enviroments.dirFiles}/${req.params.repository} && git branch`, (error, stdout, stderr) => {
-        return res.json({ data: stdout.toString().trim().split('\n').map(item => ({ name: item })), repo: req.params.repository });
-    })
-})
-
-
+router.get('/:repository', [branchController.index]);
 //Take Commits
-router.get('/:repository/:branch/commits', (req: Request, res: Response, next: NextFunction) => {
-    const cmd = `cd ${enviroments.dirFiles}/${req.params.repository} && git log ${req.params.branch} --pretty=format:'{"commit":"%h","date":"%ad","message":"%s","author":"%an", "email":"%ce"}' --date=short`;
-    exec(cmd, (error, stdout, stderr) => {
-        if (!error) {
-            const result = parseToObject(`${stdout}`);
-            return res.json({ data: result, branch: req.params.branch });
-        } else {
-            console.log('error::', error);
-            return res.send(`error::${error}`)
-        }
-
-    });
-});
-
+router.get('/:repository/:branch/commits', [commitsController.index]);
 //Pull requests
-router.post('/diff/:repository/:id', (req: Request, res: Response, next: NextFunction) => {
-    const { origin, destination } = req.body;
-    const cmd = `cd ${enviroments.dirFiles}/${req.params.repository} && git diff  ${destination.trim().replace('*', '')}  ${origin.trim().replace('*', '')}`
-    exec(cmd, (error, stdout, stderr) => {
-        if (!error) {
-            return res.json({ data: stdout.toString().trim().split('diff --git') })
-        } else {
-            return res.json({ data: stderr })
-        }
-    })
-});
+router.post('/diff/:repository/:id', [pullRequestController.store]);
+//pull requests
+router.post('/:repository/merge', [pullRequestController.merge]);
 
-
-router.post('/:repository/merge', (req: Request, res: Response, next: NextFunction) => {
-    const { origin, destination } = req.body;
-    console.log({
-        origin,
-        destination,
-        repo: req.params.repository
-    })
-
-    const cmd = `cd ${enviroments.dirFiles}/${req.params.repository} && git checkout ${destination} && git merge ${origin}`;
-    exec(cmd, (error, stdout, stderr) => {
-        if (!error) {
-            return res.json({ data: "Merge success"})
-        } else {
-            
-            return res.json({ data: stderr })
-        }
-    })
-});
 export default router;
