@@ -7,7 +7,7 @@ import { stderr, stdout } from 'process';
 
 const router = express.Router();
 
-
+//Take Repositories
 router.get('/', (req: Request, res: Response, next: NextFunction) => {
 
     exec(`find ${enviroments.dirFiles} -name ".git"`, (error, stdout, stderr) => {
@@ -17,33 +17,35 @@ router.get('/', (req: Request, res: Response, next: NextFunction) => {
             console.log('Signal received: ' + error.signal);
         }
 
-        console.log('Child Process STDOUT: ' + stdout);
-        console.error('Child Process STDERR: ' + stderr);
-
-        return res.render('repositories', {
+        return res.json({
+            name: 'repositories',
             data: stdout.toString()
                 .trim()
                 .split('\n')
-                .map(item =>
-                    item.replace(`${enviroments.dirFiles}`, '')
-                        .replace('/.git', ''))
+                .map(item => ({
+                    name:
+                        item.replace(`${enviroments.dirFiles}`, '')
+                            .replace('/.git', '')
+                }))
         });
     });
 })
 
+//Take Branchs
 router.get('/:repository', (req: Request, res: Response, next: NextFunction) => {
     exec(`cd ${enviroments.dirFiles}/${req.params.repository} && git branch`, (error, stdout, stderr) => {
-        return res.render('branches', { data: stdout.toString().trim().split('\n'), repo: req.params.repository });
+        return res.json({ data: stdout.toString().trim().split('\n').map(item => ({ name: item })), repo: req.params.repository });
     })
 })
 
 
+//Take Commits
 router.get('/:repository/:branch/commits', (req: Request, res: Response, next: NextFunction) => {
     const cmd = `cd ${enviroments.dirFiles}/${req.params.repository} && git log ${req.params.branch} --pretty=format:'{"commit":"%h","date":"%ad","message":"%s","author":"%an", "email":"%ce"}' --date=short`;
     exec(cmd, (error, stdout, stderr) => {
         if (!error) {
             const result = parseToObject(`${stdout}`);
-            return res.render('commit', { data: result, branch: req.params.branch });
+            return res.json({ data: result, branch: req.params.branch });
         } else {
             console.log('error::', error);
             return res.send(`error::${error}`)
@@ -52,11 +54,36 @@ router.get('/:repository/:branch/commits', (req: Request, res: Response, next: N
     });
 });
 
-router.get('/:repository/pull-request/:branch', (req: Request, res: Response, next: NextFunction) => {
-    const cmd = `cd ${enviroments.dirFiles}/${req.params.repository} && git branch`;
+//Pull requests
+router.post('/diff/:repository/:id', (req: Request, res: Response, next: NextFunction) => {
+    const { origin, destination } = req.body;
+    const cmd = `cd ${enviroments.dirFiles}/${req.params.repository} && git diff  ${destination.trim().replace('*', '')}  ${origin.trim().replace('*', '')}`
     exec(cmd, (error, stdout, stderr) => {
-        return res.render('pullRequest', { branch: req.params.branch, branches: stdout.toString().trim().split('\n')})
-    });
+        if (!error) {
+            return res.json({ data: stdout.toString().trim().split('diff --git') })
+        } else {
+            return res.json({ data: stderr })
+        }
+    })
 });
 
+
+router.post('/:repository/merge', (req: Request, res: Response, next: NextFunction) => {
+    const { origin, destination } = req.body;
+    console.log({
+        origin,
+        destination,
+        repo: req.params.repository
+    })
+
+    const cmd = `cd ${enviroments.dirFiles}/${req.params.repository} && git checkout ${destination} && git merge ${origin}`;
+    exec(cmd, (error, stdout, stderr) => {
+        if (!error) {
+            return res.json({ data: "Merge success"})
+        } else {
+            
+            return res.json({ data: stderr })
+        }
+    })
+});
 export default router;
