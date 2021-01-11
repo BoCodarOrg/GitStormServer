@@ -2,21 +2,18 @@ import { NextFunction, Request, Response } from "express";
 import { exec } from 'child_process';
 import enviroments from '../config/enviroments';
 
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
 export default {
     async index(req: Request, res: Response, next: NextFunction) {
-        exec(`ls ${enviroments.dirFiles} -d`, (error, stdout, stderr) => {
-            return res.json({
-                name: 'repositories',
-                data: stdout.toString()
-                    .trim()
-                    .split('\n')
-                    .map(item => ({
-                        name:
-                            item.replace(`${enviroments.dirFiles}`, '')
-                                .replace('/.git', '')
-                    }))
-            });
-        });
+        const result = await prisma.repository.findMany();
+        return res.status(200).json({
+            error: false,
+            status: 200,
+            data: result
+        })
     },
 
 }
