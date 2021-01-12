@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model PullRequest {
+  id           Int         @id @default(autoincrement())
+  title        String
+  description  String?
+  origin       String
+  destination  String
+  status       Int
+  index        Int         @default(0)
+  hash         String
+  idRepository Int
+  userId       Int         @default(1)
+  User         User        @relation(fields: [userId], references: [id])
+  Repository   Repository  @relation(fields: [idRepository], references: [id])
+  Reviewers    Reviewers[]
+
+  @@index([idRepository], name: "idRepository")
+}
+
+model Repository {
+  id          Int           @id @default(autoincrement())
+  name        String
+  description String?
+  language    String?
+  PullRequest PullRequest[]
+}
+
+model Reviewers {
+  id            Int         @id @default(autoincrement())
+  status        Int         @default(0)
+  userId        Int
+  pullrequestId Int
+  PullRequest   PullRequest @relation(fields: [pullrequestId], references: [id])
+  User          User        @relation(fields: [userId], references: [id])
+
+  @@index([userId], name: "userId")
+  @@index([pullrequestId], name: "pullrequestId")
+}
+
+model User {
+  id          Int           @id @default(autoincrement())
+  name        String
+  email       String
+  password    String
+  Reviewers   Reviewers[]
+  PullRequest PullRequest[]
+}

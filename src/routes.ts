@@ -1,47 +1,29 @@
-import express, { NextFunction, Request, Response } from 'express';
+import express from 'express';
 
-import { exec } from 'child_process';
-import parseToObject from './util/parseToObject';
-import enviroments from './config/enviroments';
-import { stderr, stdout } from 'process';
+import repositoriesController from './controllers/Repositories';
+import branchController from './controllers/Branch';
+import commitsController from './controllers/Commits';
+import pullRequestController from './controllers/PullRequest';
+import usersController from './controllers/Users';
+
 
 const router = express.Router();
 
-router.get('/', (req: Request, res: Response, next: NextFunction) => {
-    
-   exec(`ls -F ${enviroments.dirFiles} | grep \/$`,(error, stdout, stderr) => {
-        if (error) {
-          console.log(error.stack);
-          console.log('Error code: '+error.code);
-          console.log('Signal received: '+error.signal);
-        }
+//Take Repositories
+router.get('/', [repositoriesController.index]);
+//Take Branchs
+router.get('/:repository', [branchController.index]);
+//Take Commits
+router.get('/:repository/:branch/commits', [commitsController.index]);
+//Pull requests
+router.post('/pullrequest/:repository/:id', [pullRequestController.store]);
+router.post('/:repository/merge', [pullRequestController.merge]);
+router.post('/diff', pullRequestController.diff);
+router.get('/pullrequests/index', [pullRequestController.index]);
+router.get('/:repository/pullrequests', [pullRequestController.indexByRepository]);
+router.get('/diff/:repository/:id', [pullRequestController.findDiffByHash]);
 
-        console.log('Child Process STDOUT: '+stdout);
-        console.error('Child Process STDERR: '+stderr);
-
-        return res.render('repositories', { data: stdout.toString().trim().split('\n') });        
-      });
-})
-
-router.get('/:repository', (req: Request, res: Response, next: NextFunction) => {
-    exec(`cd ${enviroments.dirFiles}/${req.params.repository} && git branch`, (error, stdout, stderr) => {
-        return res.render('branches', { data: stdout.toString().trim().split('\n'),repo: req.params.repository });
-    })
-})
-
-
-router.get('/:repository/:branch/commits', (req: Request, res: Response, next: NextFunction) => {
-    const cmd = `cd ${enviroments.dirFiles}/${req.params.repository} && git log ${req.params.branch} --pretty=format:'{"commit":"%h","date":"%ad","message":"%s","author":"%an", "email":"%ce"}' --date=short`;
-    exec(cmd, (error, stdout, stderr) => {
-        if (!error) {
-            const result = parseToObject(`${stdout}`);
-            return res.render('commit', { data: result, branch: req.params.branch });
-        } else {
-            console.log('error::', error);
-            return res.send(`error::${error}`)
-        }
-
-    });    
-});
+//search reviewers
+router.get('/users/:name', [usersController.search]);
 
 export default router;
