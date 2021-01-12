@@ -17,6 +17,8 @@ model PullRequest {
   index        Int         @default(0)
   hash         String
   idRepository Int
+  userId       Int         @default(1)
+  User         User        @relation(fields: [userId], references: [id])
   Repository   Repository  @relation(fields: [idRepository], references: [id])
   Reviewers    Reviewers[]
 
@@ -44,9 +46,10 @@ model Reviewers {
 }
 
 model User {
-  id        Int         @id @default(autoincrement())
-  name      String
-  email     String
-  password  String
-  Reviewers Reviewers[]
+  id          Int           @id @default(autoincrement())
+  name        String
+  email       String
+  password    String
+  Reviewers   Reviewers[]
+  PullRequest PullRequest[]
 }

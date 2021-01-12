@@ -16,13 +16,13 @@ router.get('/:repository', [branchController.index]);
 //Take Commits
 router.get('/:repository/:branch/commits', [commitsController.index]);
 //Pull requests
-router.get('/diff/:repository/:id', [pullRequestController.findDiffByHash]);
 router.post('/pullrequest/:repository/:id', [pullRequestController.store]);
-//pull requests
 router.post('/:repository/merge', [pullRequestController.merge]);
-//list Pull requests
+router.post('/diff', pullRequestController.diff);
 router.get('/pullrequests/index', [pullRequestController.index]);
-// router.get('/:repository/pullrequests', [pullRequestController.indexByRepository]);
+router.get('/:repository/pullrequests', [pullRequestController.indexByRepository]);
+router.get('/diff/:repository/:id', [pullRequestController.findDiffByHash]);
+
 //search reviewers
 router.get('/users/:name', [usersController.search]);
 

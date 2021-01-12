@@ -6,12 +6,19 @@ import { CHANGE_DIRECTORY } from "../util/changeDirectory";
 
 import { PrismaClient } from '@prisma/client';
 import ModelResponse from "../model/ResponseModel";
+import { stderr, stdout } from "process";
+import { truncate } from "fs";
 
 const prisma = new PrismaClient();
 
 export default {
     async index(req: Request, res: Response<ModelResponse>, next: NextFunction) {
-        const result = await prisma.pullRequest.findMany();
+        const result = await prisma.pullRequest.findMany({
+            include: {
+                User: true,
+                Repository: true
+            }
+        });
         return res.status(200).json({
             error: false,
             status: 200,
@@ -28,39 +35,41 @@ export default {
                 }
             })
             if (result) {
-                const cmdMerge = `${CHANGE_DIRECTORY(req.params.repository)} && git checkout ${result.destination.trim().replace('*', '')} && git merge ${result.origin.trim().replace('*', '')}`;
+                const cmdMerge = `${CHANGE_DIRECTORY(req.params.repository)} && git checkout ${result.destination} && git merge ${result.origin}`;
+    
                 exec(cmdMerge, (errorMerge, resultMerge, stderrMerge) => {
-                    const cmd = `${CHANGE_DIRECTORY(req.params.repository)} && git diff`
-                    exec(cmd, (errorDiff, resultDiff, stderrDiff) => {
-                        if (!errorDiff) {
-                            const cmdAbort = `${CHANGE_DIRECTORY(req.params.repository)} && git merge --abort`;
-                            exec(cmdAbort, async (errorAbort, resultAbort, stderrAbort) => {
-                                if (!errorAbort) {
-                                    return res.status(200).json({
-                                        status: 200,
-                                        error: false,
-                                        data: resultDiff.toString().trim().split('diff --git')
-                                    })
-
-
+                    let cmd = `${CHANGE_DIRECTORY(req.params.repository)} && git diff`
+                    if (resultMerge.indexOf('CONFLICT') === -1) {
+                        exec(`${CHANGE_DIRECTORY(req.params.repository)} && git reset --hard HEAD~1`, () => {
+                            cmd = `${cmd} ${result.destination} ${result.origin}`;
+                            exec(cmd, (errorDiff, resultDiff, stderrDiff) => {
+                                if (!errorDiff) {
+                                    resetMergeAndReturnDiff(resultDiff, req, res)
                                 } else {
-                                    console.log({ data: 'Abort: ' + stderrAbort })
+                                    console.log({ data: 'Diff: ' + stderrDiff })
                                     return res.json({
                                         status: 500,
                                         error: true,
-                                        data: stderrAbort
+                                        data: stderrDiff
                                     })
                                 }
                             })
-                        } else {
-                            console.log({ data: 'Diff: ' + stderrDiff })
-                            return res.json({
-                                status: 500,
-                                error: true,
-                                data: stderrDiff
-                            })
-                        }
-                    })
+                        })
+                    } else {
+
+                        exec(cmd, (errorDiff, resultDiff, stderrDiff) => {
+                            if (!errorDiff) {
+                                resetMergeAndReturnDiff(resultDiff, req, res, true)
+                            } else {
+                                console.log({ data: 'Diff: ' + stderrDiff })
+                                return res.json({
+                                    status: 500,
+                                    error: true,
+                                    data: stderrDiff
+                                })
+                            }
+                        })
+                    }
                 });
             } else {
                 return res.json({
@@ -78,12 +87,44 @@ export default {
             })
         }
     },
+    async indexByRepository(req: Request, res: Response<ResponseModel>, next: NextFunction) {
+        const result = await prisma.pullRequest.findMany({
+            where: {
+                hash: req.body.hash
+            },
+            include: {
+                User: true,
+                Repository: true
+            }
+        });
+        return res.status(200).json({
+            error: false,
+            status: 200,
+            data: result
+        })
+
+
+    },
+
+    async diff(req: Request, res: Response<ResponseModel>, next: NextFunction) {
+        const { origin, destination, repository } = req.body;
+
+        const cmd = `${CHANGE_DIRECTORY(repository)} && git diff ${destination} ${origin}`;
+        exec(cmd, (error, stdout, stderr) => {
+            return res.json({
+                error: false,
+                status: 200,
+                data: stdout !== ''
+            })
+        });
+
+    },
     async store(req: Request, res: Response<ResponseModel>, next: NextFunction) {
         const { origin, destination, title, description, reviewers, id, idRepository } = req.body;
         const result = await prisma.pullRequest.create({
             data: {
-                origin,
-                destination,
+                origin: origin.replace('*', ''),
+                destination: destination.replace('*', ''),
                 description,
                 title,
                 hash: id,
@@ -129,4 +170,27 @@ export default {
             }
         })
     }
+}
+
+function resetMergeAndReturnDiff(diff: string, req: Request, res: Response<ResponseModel>, abort = false) {
+    let cmdAbort = `${CHANGE_DIRECTORY(req.params.repository)} && git reset --hard HEAD~1`;
+    if (abort) {
+        cmdAbort = `${CHANGE_DIRECTORY(req.params.repository)} && git merge --abort`;
+    }
+    exec(cmdAbort, async (errorAbort, resultAbort, stderrAbort) => {
+        if (!errorAbort) {
+            return res.status(200).json({
+                status: 200,
+                error: false,
+                data: diff.toString().trim().split('diff --git')
+            })
+        } else {
+            console.log({ data: 'Abort: ' + stderrAbort })
+            return res.json({
+                status: 500,
+                error: true,
+                data: stderrAbort
+            })
+        }
+    })
 }

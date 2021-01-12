@@ -15,7 +15,7 @@ exports.default = {
     index(req, res, next) {
         return __awaiter(this, void 0, void 0, function* () {
             child_process_1.exec(`${changeDirectory_1.CHANGE_DIRECTORY(req.params.repository)} && git branch`, (error, stdout, stderr) => {
-                return res.json({ data: stdout.toString().trim().split('\n').map(item => ({ name: item })), repo: req.params.repository });
+                return res.json({ data: stdout.toString().trim().split('\n').map(item => ({ name: item.replace('*', '').trim() })), repo: req.params.repository });
             });
         });
     }
