@@ -7,7 +7,7 @@ export const CHANGE_DIRECTORY = (repo: string) => (
     `echo ${enviroments.passGit} | sudo -u ${enviroments.userGit} -S cd ${enviroments.dirFiles}/${repo}`
 );
 
-export const PERMISSIONS = `echo ${enviroments.passGit} | sudo -u ${enviroments.userGit} -S `;
+export const PERMISSIONS = `echo ${enviroments.passGit} | su ${enviroments.userGit} -c `;
 
 export const chageDirectoryReq = async (req: Request, res: Response, next: NextFunction) => {
     exec(`cd ${enviroments.dirFiles}/${req.params.repository}`, (error, stdout, stderr) => {
