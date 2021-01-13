@@ -35,18 +35,25 @@ exports.default = {
                 const result = yield prisma.pullRequest.findFirst({
                     where: {
                         hash: req.params.id
+                    },
+                    include: {
+                        Reviewers: {
+                            include: {
+                                User: true,
+                            }
+                        },
                     }
                 });
                 if (result) {
                     const cmdMerge = `${changeDirectory_1.CHANGE_DIRECTORY(req.params.repository)} && git checkout ${result.destination} && git merge ${result.origin}`;
                     child_process_1.exec(cmdMerge, (errorMerge, resultMerge, stderrMerge) => {
                         let cmd = `${changeDirectory_1.CHANGE_DIRECTORY(req.params.repository)} && git diff`;
-                        if (resultMerge.indexOf('CONFLICT') === -1) {
+                        if (resultMerge.indexOf('CONFLICT') === -1 && resultMerge.indexOf('Already up to date.')) {
                             child_process_1.exec(`${changeDirectory_1.CHANGE_DIRECTORY(req.params.repository)} && git reset --hard HEAD~1`, () => {
-                                cmd = `${cmd} ${result.destination} ${result.origin}`;
+                                cmd = `${cmd} ${result.origin} ${result.destination}`;
                                 child_process_1.exec(cmd, (errorDiff, resultDiff, stderrDiff) => {
                                     if (!errorDiff) {
-                                        resetMergeAndReturnDiff(resultDiff, req, res);
+                                        resetMergeAndReturnDiff(resultDiff, result, req, res);
                                     }
                                     else {
                                         console.log({ data: 'Diff: ' + stderrDiff });
@@ -62,7 +69,7 @@ exports.default = {
                         else {
                             child_process_1.exec(cmd, (errorDiff, resultDiff, stderrDiff) => {
                                 if (!errorDiff) {
-                                    resetMergeAndReturnDiff(resultDiff, req, res, true);
+                                    resetMergeAndReturnDiff(resultDiff, result, req, res, true);
                                 }
                                 else {
                                     console.log({ data: 'Diff: ' + stderrDiff });
@@ -141,9 +148,14 @@ exports.default = {
                             id: parseInt(idRepository)
                         }
                     },
+                    User: {
+                        connect: {
+                            id: 1
+                        }
+                    },
                     Reviewers: {
                         create: reviewers
-                    }
+                    },
                 }
             });
             if (result) {
@@ -165,20 +177,32 @@ exports.default = {
     merge(req, res, next) {
         return __awaiter(this, void 0, void 0, function* () {
             const { origin, destination } = req.body;
-            const cmd = `${changeDirectory_1.CHANGE_DIRECTORY(req.params.repository)} && git checkout ${destination} && git merge ${origin}`;
-            child_process_1.exec(cmd, (error, stdout, stderr) => {
+            const cmd = `${changeDirectory_1.CHANGE_DIRECTORY(req.params.repository)} && git checkout ${destination} && git merge ${origin}  -m "Merge realizado com sucesso"`;
+            child_process_1.exec(cmd, (error, stdout, stderr) => __awaiter(this, void 0, void 0, function* () {
                 if (!error) {
+                    yield prisma.pullRequest.update({
+                        where: {
+                            id: parseInt(req.body.id)
+                        },
+                        data: {
+                            status: req.body.status
+                        }
+                    });
                     return res.json({ data: "Merge success" });
                 }
                 else {
-                    return res.json({ data: stderr });
+                    return res.json({
+                        error: true,
+                        status: 500,
+                        data: stderr
+                    });
                 }
-            });
+            }));
         });
     }
 };
-function resetMergeAndReturnDiff(diff, req, res, abort = false) {
-    let cmdAbort = `${changeDirectory_1.CHANGE_DIRECTORY(req.params.repository)} && git reset --hard HEAD~1`;
+function resetMergeAndReturnDiff(diff, result, req, res, abort = false) {
+    let cmdAbort = `${changeDirectory_1.CHANGE_DIRECTORY(req.params.repository)}`;
     if (abort) {
         cmdAbort = `${changeDirectory_1.CHANGE_DIRECTORY(req.params.repository)} && git merge --abort`;
     }
@@ -187,7 +211,7 @@ function resetMergeAndReturnDiff(diff, req, res, abort = false) {
             return res.status(200).json({
                 status: 200,
                 error: false,
-                data: diff.toString().trim().split('diff --git')
+                data: { diff: diff.toString().trim().split('diff --git'), reviewers: result.Reviewers }
             });
         }
         else {
