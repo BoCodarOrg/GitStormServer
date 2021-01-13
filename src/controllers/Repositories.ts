@@ -24,7 +24,9 @@ export default {
                 if (!error) {
                     prisma.repository.create({
                         data: {
-                            name: req.body.name
+                            name: req.body.name,
+                            description: req.body.description || '',
+                            language: req.body.language || 'Não especificada'
                         }
                     })
                 } else {
