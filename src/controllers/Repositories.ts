@@ -19,7 +19,7 @@ export default {
 
     async createRepository(req: Request, res: Response, next: NextFunction) {
         if (req.body.name) {
-            const cmd = `${PERMISSIONS} mkdir /srv/git/${req.body.name}`;
+            const cmd = `${PERMISSIONS} mkdir /srv/git/${req.body.name}.git && cd ${req.body.name}.git && git init --bare `;
             exec(cmd, (error, stdout, stderr) => {
                 if (!error) {
                     prisma.repository.create({
@@ -35,9 +35,10 @@ export default {
                         data: stdout
                     })
                 } else {
+                    console.log(error);
                     return res.status(500).json({
-                        error: false,
-                        status: 200,
+                        error: true,
+                        status: 500,
                         data: "Falha ao criar repositório"
                     })
                 }
