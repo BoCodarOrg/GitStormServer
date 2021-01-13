@@ -12,11 +12,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.changeDirectoryCmd = exports.chageDirectoryReq = exports.CHANGE_DIRECTORY = void 0;
+exports.changeDirectoryCmd = exports.chageDirectoryReq = exports.PERMISSIONS = exports.CHANGE_DIRECTORY = void 0;
 const child_process_1 = require("child_process");
 const enviroments_1 = __importDefault(require("../config/enviroments"));
-const CHANGE_DIRECTORY = (repo) => (`cd ${enviroments_1.default.dirFiles}/${repo}`);
+const CHANGE_DIRECTORY = (repo) => (`echo ${enviroments_1.default.passGit} | sudo -u ${enviroments_1.default.userGit} -S cd ${enviroments_1.default.dirFiles}/${repo}`);
 exports.CHANGE_DIRECTORY = CHANGE_DIRECTORY;
+exports.PERMISSIONS = `echo ${enviroments_1.default.passGit} | sudo -u ${enviroments_1.default.userGit} -S `;
 const chageDirectoryReq = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     child_process_1.exec(`cd ${enviroments_1.default.dirFiles}/${req.params.repository}`, (error, stdout, stderr) => {
         return new Promise((resolve, reject) => {

@@ -29,6 +29,11 @@ export default {
                             language: req.body.language || 'Não especificada'
                         }
                     })
+                    return res.status(200).json({
+                        error: false,
+                        status: 200,
+                        data: stdout
+                    })
                 } else {
                     return res.status(500).json({
                         error: false,

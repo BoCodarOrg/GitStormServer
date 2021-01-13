@@ -10,8 +10,9 @@ const Commits_1 = __importDefault(require("./controllers/Commits"));
 const PullRequest_1 = __importDefault(require("./controllers/PullRequest"));
 const Users_1 = __importDefault(require("./controllers/Users"));
 const router = express_1.default.Router();
-//Take Repositories
+//Repositories
 router.get('/', [Repositories_1.default.index]);
+router.post("/createRepository", [Repositories_1.default.createRepository]);
 //Take Branchs
 router.get('/:repository', [Branch_1.default.index]);
 //Take Commits
