@@ -17,7 +17,8 @@ model PullRequest {
   index        Int         @default(0)
   hash         String
   idRepository Int
-  userId       Int         @default(1)
+  userId       Int
+  create_at    DateTime    @default(now())
   User         User        @relation(fields: [userId], references: [id])
   Repository   Repository  @relation(fields: [idRepository], references: [id])
   Reviewers    Reviewers[]
@@ -30,6 +31,7 @@ model Repository {
   name        String
   description String?
   language    String?
+  create_at   DateTime      @default(now())
   PullRequest PullRequest[]
 }
 
@@ -50,6 +52,7 @@ model User {
   name        String
   email       String
   password    String
+  user        String        @unique
   Reviewers   Reviewers[]
   PullRequest PullRequest[]
 }

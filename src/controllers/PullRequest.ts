@@ -6,8 +6,6 @@ import { CHANGE_DIRECTORY } from "../util/changeDirectory";
 
 import { PrismaClient } from '@prisma/client';
 import ModelResponse from "../model/ResponseModel";
-import { stderr, stdout } from "process";
-import { truncate } from "fs";
 
 const prisma = new PrismaClient();
 
@@ -32,19 +30,26 @@ export default {
             const result = await prisma.pullRequest.findFirst({
                 where: {
                     hash: req.params.id
+                },
+                include: {
+                    Reviewers: {
+                        include: {
+                            User: true,
+                        }
+                    },
                 }
             })
             if (result) {
                 const cmdMerge = `${CHANGE_DIRECTORY(req.params.repository)} && git checkout ${result.destination} && git merge ${result.origin}`;
-    
+
                 exec(cmdMerge, (errorMerge, resultMerge, stderrMerge) => {
                     let cmd = `${CHANGE_DIRECTORY(req.params.repository)} && git diff`
-                    if (resultMerge.indexOf('CONFLICT') === -1) {
+                    if (resultMerge.indexOf('CONFLICT') === -1 && resultMerge.indexOf('Already up to date.')) {
                         exec(`${CHANGE_DIRECTORY(req.params.repository)} && git reset --hard HEAD~1`, () => {
-                            cmd = `${cmd} ${result.destination} ${result.origin}`;
+                            cmd = `${cmd} ${result.origin} ${result.destination}`;
                             exec(cmd, (errorDiff, resultDiff, stderrDiff) => {
                                 if (!errorDiff) {
-                                    resetMergeAndReturnDiff(resultDiff, req, res)
+                                    resetMergeAndReturnDiff(resultDiff, result, req, res)
                                 } else {
                                     console.log({ data: 'Diff: ' + stderrDiff })
                                     return res.json({
@@ -59,7 +64,7 @@ export default {
 
                         exec(cmd, (errorDiff, resultDiff, stderrDiff) => {
                             if (!errorDiff) {
-                                resetMergeAndReturnDiff(resultDiff, req, res, true)
+                                resetMergeAndReturnDiff(resultDiff, result, req, res, true)
                             } else {
                                 console.log({ data: 'Diff: ' + stderrDiff })
                                 return res.json({
@@ -135,9 +140,14 @@ export default {
                         id: parseInt(idRepository)
                     }
                 },
+                User: {
+                    connect: {
+                        id: 1
+                    }
+                },
                 Reviewers: {
                     create: reviewers
-                }
+                },
             }
         })
 
@@ -160,20 +170,34 @@ export default {
 
     async merge(req: Request, res: Response, next: NextFunction) {
         const { origin, destination } = req.body;
-        const cmd = `${CHANGE_DIRECTORY(req.params.repository)} && git checkout ${destination} && git merge ${origin}`;
-        exec(cmd, (error, stdout, stderr) => {
+        const cmd = `${CHANGE_DIRECTORY(req.params.repository)} && git checkout ${destination} && git merge ${origin}  -m "Merge realizado com sucesso"`;
+        exec(cmd, async (error, stdout, stderr) => {
             if (!error) {
+                await prisma.pullRequest.update({
+                    where: {
+                        id: parseInt(req.body.id)
+                    },
+                    data: {
+                        status: req.body.status
+                    }
+                })
                 return res.json({ data: "Merge success" })
             } else {
-
-                return res.json({ data: stderr })
+                return res.json({
+                    error: true,
+                    status: 500,
+                    data: stderr
+                })
             }
+
+
+
         })
     }
 }
 
-function resetMergeAndReturnDiff(diff: string, req: Request, res: Response<ResponseModel>, abort = false) {
-    let cmdAbort = `${CHANGE_DIRECTORY(req.params.repository)} && git reset --hard HEAD~1`;
+function resetMergeAndReturnDiff(diff: string, result: any, req: Request, res: Response<ResponseModel>, abort = false) {
+    let cmdAbort = `${CHANGE_DIRECTORY(req.params.repository)}`;
     if (abort) {
         cmdAbort = `${CHANGE_DIRECTORY(req.params.repository)} && git merge --abort`;
     }
@@ -182,7 +206,7 @@ function resetMergeAndReturnDiff(diff: string, req: Request, res: Response<Respo
             return res.status(200).json({
                 status: 200,
                 error: false,
-                data: diff.toString().trim().split('diff --git')
+                data: { diff: diff.toString().trim().split('diff --git'), reviewers: result.Reviewers }
             })
         } else {
             console.log({ data: 'Abort: ' + stderrAbort })

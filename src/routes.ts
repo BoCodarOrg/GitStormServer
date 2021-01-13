@@ -9,8 +9,10 @@ import usersController from './controllers/Users';
 
 const router = express.Router();
 
-//Take Repositories
+//Repositories
 router.get('/', [repositoriesController.index]);
+router.post("/createRepository", [repositoriesController.createRepository])
+
 //Take Branchs
 router.get('/:repository', [branchController.index]);
 //Take Commits
