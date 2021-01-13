@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE `PullRequest` ADD COLUMN     `userId` INT NOT NULL DEFAULT 1;
+
+-- AddForeignKey
+ALTER TABLE `PullRequest` ADD FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;

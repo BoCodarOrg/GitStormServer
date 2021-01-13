@@ -3,7 +3,11 @@ import { Request, Response, NextFunction } from "express";
 import { exec } from 'child_process';
 import enviroments from "../config/enviroments";
 
-export const CHANGE_DIRECTORY = (repo: string ) => (`cd ${enviroments.dirFiles}/${repo}`);
+export const CHANGE_DIRECTORY = (repo: string) => (
+    `echo ${enviroments.passGit} | sudo -u ${enviroments.userGit} -S cd ${enviroments.dirFiles}/${repo}`
+);
+
+export const PERMISSIONS = `echo ${enviroments.passGit} | sudo -u ${enviroments.userGit} -S `;
 
 export const chageDirectoryReq = async (req: Request, res: Response, next: NextFunction) => {
     exec(`cd ${enviroments.dirFiles}/${req.params.repository}`, (error, stdout, stderr) => {
